@@ -1,0 +1,14 @@
+{
+    "KPackageStructure": "Plasma/Wallpaper",
+    "KPlugin": {
+        "Authors": [ { "Name": "chazable" } ],
+        "Category": "",
+        "Description": "A live shoal of fish that swims around your desktop icons and widgets",
+        "Icon": "applications-games",
+        "Id": "org.shoal.wallpaper",
+        "License": "GPLv2+",
+        "Name": "Shoal",
+        "Version": "1.0"
+    },
+    "X-KDE-ParentApp": "org.kde.plasmashell"
+}

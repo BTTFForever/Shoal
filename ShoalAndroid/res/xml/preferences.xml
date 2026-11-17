@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <Preference android:key="preview" android:title="Preview" android:summary="Show the fish now. Press any key to come back." />
+    <PreferenceCategory android:title="Screensaver">
+        <Preference android:key="status" android:title="Screensaver" android:persistent="false" />
+        <ListPreference android:key="timeout" android:title="Start after" android:persistent="false"
+            android:dialogTitle="Start the screensaver after"
+            android:entries="@array/timeout_names" android:entryValues="@array/timeout_values" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Fish">
+        <ListPreference android:key="boids" android:title="How many fish" android:defaultValue="100" android:summary="%s"
+            android:entries="@array/boids_names" android:entryValues="@array/boids_values" />
+        <ListPreference android:key="size" android:title="Size" android:defaultValue="45" android:summary="%s"
+            android:entries="@array/size_names" android:entryValues="@array/size_values" />
+        <ListPreference android:key="sizevar" android:title="Size variation" android:defaultValue="150" android:summary="%s"
+            android:entries="@array/sizevar_names" android:entryValues="@array/sizevar_values" />
+        <ListPreference android:key="tail" android:title="Tail length" android:defaultValue="33" android:summary="%s"
+            android:entries="@array/tail_names" android:entryValues="@array/tail_values" />
+        <ListPreference android:key="shade" android:title="Tail shade" android:defaultValue="-40" android:summary="%s"
+            android:entries="@array/shade_names" android:entryValues="@array/shade_values" />
+        <MultiSelectListPreference android:key="species" android:title="Species" android:dialogTitle="Species"
+            android:entries="@array/species_names" android:entryValues="@array/species_values"
+            android:defaultValue="@array/species_values" />
+        <ListPreference android:key="speciesmode" android:title="Species mix" android:defaultValue="0" android:summary="%s"
+            android:entries="@array/speciesmode_names" android:entryValues="@array/speciesmode_values" />
+        <SwitchPreference android:key="depth" android:title="Depth and shadows" android:defaultValue="false"
+            android:summary="Bigger fish swim higher and cast shadows" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Swimming">
+        <ListPreference android:key="speed" android:title="Speed" android:defaultValue="42" android:summary="%s"
+            android:entries="@array/speed_names" android:entryValues="@array/speed_values" />
+        <ListPreference android:key="speedvar" android:title="Speed variation" android:defaultValue="10" android:summary="%s"
+            android:entries="@array/speedvar_names" android:entryValues="@array/speedvar_values" />
+        <ListPreference android:key="randomness" android:title="Schooling" android:defaultValue="0" android:summary="%s"
+            android:entries="@array/randomness_names" android:entryValues="@array/randomness_values" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Colours">
+        <com.shoal.screensaver.PalettePreference android:key="palette" android:title="Palette" android:dialogTitle="Palette" />
+        <ListPreference android:key="colourcount" android:title="Number of colours" android:defaultValue="3" android:summary="%s"
+            android:entries="@array/colourcount_names" android:entryValues="@array/colourcount_values" />
+        <SwitchPreference android:key="coloursort" android:title="Shoal by colour" android:defaultValue="true"
+            android:summary="Fish prefer to swim with their own colour" />
+        <SwitchPreference android:key="colouravoid" android:title="Avoid other colours" android:defaultValue="false"
+            android:dependency="coloursort" android:summary="Shoals of different colours steer around each other" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Other">
+        <ListPreference android:key="framerate" android:title="Frame rate" android:defaultValue="0" android:summary="%s"
+            android:entries="@array/framerate_names" android:entryValues="@array/framerate_values" />
+        <SwitchPreference android:key="showfps" android:title="Show frame rate" android:defaultValue="true" />
+        <Preference android:key="reset" android:title="Reset to defaults" />
+    </PreferenceCategory>
+</PreferenceScreen>

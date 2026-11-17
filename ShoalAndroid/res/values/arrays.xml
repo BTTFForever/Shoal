@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="speed_names"><item>Very slow</item><item>Slow</item><item>Normal</item><item>Brisk</item><item>Fast</item><item>Very fast</item><item>Frantic</item></string-array>
+    <string-array name="speed_values"><item>15</item><item>25</item><item>42</item><item>60</item><item>90</item><item>140</item><item>220</item></string-array>
+
+    <string-array name="speedvar_names"><item>None</item><item>A little</item><item>Normal</item><item>A lot</item><item>Maximum</item></string-array>
+    <string-array name="speedvar_values"><item>0</item><item>2</item><item>5</item><item>8</item><item>10</item></string-array>
+
+    <string-array name="boids_names"><item>100</item><item>200</item><item>300</item><item>400</item><item>500</item><item>600</item><item>700</item><item>800</item><item>900</item><item>1000 (maximum)</item></string-array>
+    <string-array name="boids_values"><item>100</item><item>200</item><item>300</item><item>400</item><item>500</item><item>600</item><item>700</item><item>800</item><item>900</item><item>1000</item></string-array>
+
+    <string-array name="size_names"><item>Tiny</item><item>Small</item><item>Smaller</item><item>Normal</item><item>Larger</item><item>Large</item><item>Huge</item></string-array>
+    <string-array name="size_values"><item>12</item><item>16</item><item>20</item><item>24</item><item>32</item><item>45</item><item>65</item></string-array>
+
+    <string-array name="sizevar_names"><item>All the same</item><item>Slight</item><item>Moderate</item><item>Strong</item><item>Extreme</item></string-array>
+    <string-array name="sizevar_values"><item>100</item><item>125</item><item>150</item><item>200</item><item>300</item></string-array>
+
+    <string-array name="tail_names"><item>Stubby</item><item>Normal</item><item>Long</item><item>Very long</item><item>As long as the body</item></string-array>
+    <string-array name="tail_values"><item>20</item><item>33</item><item>50</item><item>75</item><item>100</item></string-array>
+
+    <string-array name="shade_names"><item>Much darker</item><item>Darker</item><item>Same as body</item><item>Lighter</item><item>Much lighter</item></string-array>
+    <string-array name="shade_values"><item>-80</item><item>-40</item><item>0</item><item>40</item><item>80</item></string-array>
+
+    <string-array name="randomness_names"><item>Tight shoals</item><item>A few strays</item><item>Some</item><item>Loose</item><item>Mostly solo</item><item>Chaos</item></string-array>
+    <string-array name="randomness_values"><item>0</item><item>10</item><item>25</item><item>50</item><item>75</item><item>100</item></string-array>
+
+    <string-array name="framerate_names"><item>V-Sync (panel rate)</item><item>Half rate</item><item>Double rate</item><item>Triple rate</item><item>Unlocked (as fast as possible)</item></string-array>
+    <string-array name="framerate_values"><item>0</item><item>1</item><item>2</item><item>3</item><item>4</item></string-array>
+
+    <string-array name="colourcount_names"><item>1</item><item>2</item><item>3</item><item>4</item><item>5 (whole palette)</item></string-array>
+    <string-array name="colourcount_values"><item>1</item><item>2</item><item>3</item><item>4</item><item>5</item></string-array>
+
+    <string-array name="timeout_names"><item>1 minute</item><item>5 minutes</item><item>10 minutes</item><item>15 minutes</item><item>20 minutes</item><item>30 minutes</item><item>1 hour</item><item>2 hours</item></string-array>
+    <string-array name="timeout_values"><item>60000</item><item>300000</item><item>600000</item><item>900000</item><item>1200000</item><item>1800000</item><item>3600000</item><item>7200000</item></string-array>
+    <string-array name="species_names"><item>1 Classic</item><item>2 Sardine</item><item>3 Goldfish</item><item>4 Koi</item><item>5 Tuna</item><item>6 Trout</item><item>7 Pike</item><item>8 Tetra</item><item>9 Fantail</item><item>10 Mackerel</item></string-array>
+    <string-array name="species_values"><item>1</item><item>2</item><item>3</item><item>4</item><item>5</item><item>6</item><item>7</item><item>8</item><item>9</item><item>10</item></string-array>
+    <string-array name="speciesmode_names"><item>Random mix</item><item>One species per colour</item></string-array>
+    <string-array name="speciesmode_values"><item>0</item><item>1</item></string-array>
+</resources>

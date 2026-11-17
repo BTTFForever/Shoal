@@ -1,0 +1,241 @@
+#version 430
+layout(local_size_x = 64) in;
+
+// 23 floats per fish (92 bytes, std430 scalar layout). fwd is the unit swimming direction; the rest mirrors the 2D version.
+struct Boid {
+  float px, py, pz;
+  float fx, fy, fz;
+  float wanderYaw, wanderPitch, wanderYawT, wanderPitchT;
+  float independentUntil, nextTurnChange;
+  float bx, by, bz;                 // breakaway direction
+  float speed, cruise, reserved, yawRate, phase, thrust, len, pad;
+};
+layout(std430, binding = 0) buffer BoidBuf { Boid Boids[]; };
+layout(std140, binding = 0) uniform Simulation {
+  float deltaSeconds, baseSpeed, boidCount, randomness, timeSeconds, baseLength, speedVariability, colourCount;
+  float colourBias, colourAvoid, boxL, boxT, boxR, boxB, boxD, radiusScale;
+};
+
+float sat(float x) { return clamp(x, 0.0, 1.0); }
+float sizeSpeedFactor(float len) { return pow(max(len, 1.0) / max(baseLength, 1.0), -0.2); }
+float sizeAccelerationFactor(float len) { return pow(max(len, 1.0) / max(baseLength, 1.0), -0.5); }
+float swimOmega(float fishSpeed, float len, uint i) { return 6.2831853 * clamp(1.5 * fishSpeed / max(len, 1.0), 0.8, 5.0) * (0.9 + 0.2 * fract(float(i) * 0.61803399)); }
+float randomValue(uint seed) { return fract(sin(float(seed) * 12.9898) * 43758.5453); }
+uint pcgHash(uint v) { uint s = v * 747796405u + 2891336453u; uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u; return (w >> 22u) ^ w; }
+float hash01(uint a, uint b) { return float(pcgHash(a ^ pcgHash(b)) >> 8) * (1.0 / 16777216.0); }
+uint fishColour(uint k) { return ((k * 2654435761u) >> 16) % max(uint(colourCount), 1u); }
+
+// An obstacle (wall or other fish) pushes outward along its normal when within reach; reach is longer for a fish heading at it.
+void wallTerm(bool blocked, float distance, vec3 normal, float lookahead, vec3 dir, inout vec3 push, inout float nearest, inout vec3 nearestNormal) {
+  if (!blocked) return;
+  float approach = sat(-dot(dir, normal));
+  float reach = lookahead * (0.5 + 0.5 * approach);
+  if (distance >= reach) return;
+  float w = 1.0 - max(distance, 0.0) / reach;
+  push += normal * w * w * 2.0;
+  if (distance < nearest) { nearest = distance; nearestNormal = normal; }
+}
+
+vec3 anyPerp(vec3 n) { vec3 a = abs(n.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0); return normalize(cross(n, a)); }
+
+// Rotate unit vector a toward unit vector t by at most maxAngle radians.
+vec3 turnToward(vec3 a, vec3 t, float maxAngle) {
+  float c = clamp(dot(a, t), -1.0, 1.0);
+  float ang = acos(c);
+  if (ang < 1e-4) return a;
+  if (c < -0.999) t = anyPerp(a);
+  float k = min(1.0, maxAngle / ang);
+  return normalize(mix(a, t, k));
+}
+
+vec3 rotateYaw(vec3 v, float ang) { float c = cos(ang), s = sin(ang); return vec3(v.x * c + v.z * s, v.y, -v.x * s + v.z * c); }
+
+void main() {
+  uint i = gl_GlobalInvocationID.x;
+  if (i >= uint(boidCount)) return;
+  Boid b = Boids[i];
+  vec3 pos = vec3(b.px, b.py, b.pz);
+  vec3 fwd = normalize(vec3(b.fx, b.fy, b.fz));
+  float len = b.len;
+  vec3 startFwd = fwd;
+  float startSpeed = b.speed;
+  float sizeScale = len / 20.0;
+  float bodyOffset = (len - 20.0) * 0.5;
+
+  vec3 center = vec3(0.0), average = vec3(0.0), separation = vec3(0.0);
+  float neighbors = 0.0, nearestOther = 1e9, neighborLogSpeed = 0.0;
+  vec3 nearestOtherPos = vec3(0.0);
+  uint ownColour = fishColour(i);
+  bool avoidColours = colourAvoid > 0.5 && colourBias > 0.0;
+  vec3 colourPush = vec3(0.0), nearestColourNormal = vec3(0.0);
+  float nearestColour = 1e9;
+  float minFishLookahead = 40.0 * max(1.0, sqrt(sizeScale));
+  float fishLookahead = clamp(max(baseSpeed, b.speed) * 0.3, minFishLookahead, max(minFishLookahead, 120.0));
+  float colourReach = avoidColours ? fishLookahead + len * 0.5 : 0.0;
+
+  for (uint j = 0u; j < uint(boidCount); ++j) {
+    if (i == j) continue;
+    Boid o = Boids[j];
+    vec3 op = vec3(o.px, o.py, o.pz);
+    vec3 d = op - pos;
+    float dist = max(length(d), 0.0001);
+    float pairScale = (len + o.len) / 40.0;
+    float neighborRadius = 90.0 * pairScale * radiusScale;
+    float separationRadius = 46.0 * pairScale * 1.2;
+    float affinity = 1.0;
+    if (colourBias > 0.0 && dist < max(max(nearestOther, neighborRadius), colourReach) && fishColour(j) != ownColour) {
+      affinity = 1.0 - colourBias;
+      if (avoidColours) wallTerm(true, dist - (len + o.len) * 0.25, -d / dist, fishLookahead, fwd, colourPush, nearestColour, nearestColourNormal);
+    }
+    float seekDistance = dist / max(affinity, 0.0001);
+    if (affinity > 0.0 && dist >= neighborRadius && seekDistance < nearestOther) { nearestOther = seekDistance; nearestOtherPos = op; }
+    if (dist < neighborRadius && affinity > 0.0) {
+      center += op * affinity;
+      average += vec3(o.fx, o.fy, o.fz) * o.speed * affinity;
+      neighborLogSpeed += log(max(o.cruise / sizeSpeedFactor(o.len), 0.5)) * affinity;
+      neighbors += affinity;
+    }
+    if (dist < separationRadius) separation -= d / dist * ((separationRadius - dist) / separationRadius) * 1.4;
+  }
+
+  float chaos = randomness * 0.01;
+  uint frameSeed = uint(timeSeconds * 1000.0);
+  vec3 breakaway = vec3(b.bx, b.by, b.bz);
+  if (timeSeconds >= b.independentUntil && chaos > 0.0 && hash01(i, frameSeed) < chaos * chaos * deltaSeconds) {
+    b.independentUntil = timeSeconds + 1.5 + chaos * 3.5 + hash01(i ^ 0x68bc21ebu, frameSeed) * 1.5;
+    float offset = 0.6 + hash01(i ^ 0x02e5be93u, frameSeed) * 1.8;
+    breakaway = normalize(rotateYaw(fwd, hash01(i ^ 0x967a889bu, frameSeed) < 0.5 ? -offset : offset) + vec3(0.0, hash01(i ^ 0x1234567u, frameSeed) - 0.5, 0.0) * 0.6);
+  }
+  float frameScale = deltaSeconds * 60.0;
+  vec3 v = fwd * b.speed;
+  if (neighbors > 0.0001 && timeSeconds >= b.independentUntil) {
+    float groupWeight = sat(neighbors);
+    center /= neighbors; average /= neighbors;
+    v += (center - pos) * (0.0012 / sizeScale) * groupWeight * frameScale;
+    v += (average - v) * (1.0 - pow(0.94, frameScale)) * groupWeight;
+  }
+  float seekWeight = 0.0;
+  if (neighbors < 4.0 && timeSeconds >= b.independentUntil && nearestOther < 1e8) {
+    seekWeight = (1.0 - neighbors * 0.25) * (1.0 - chaos);
+    v += normalize(nearestOtherPos - pos) * max(baseSpeed, b.speed) * 0.015 * seekWeight * frameScale;
+  }
+  v += separation * 0.12 * max(1.0, sizeScale) * frameScale;
+
+  // Walls: the six faces of the box.
+  vec3 wallPush = vec3(0.0), nearestNormal = vec3(0.0);
+  float nearestWall = 1e9;
+  vec3 moveDir = length(v) > 0.001 ? normalize(v) : fwd;
+  float comfortPeriod = 3.0 + hash01(i, 0x9e3779b9u) * 4.0;
+  float comfortPhase = timeSeconds / comfortPeriod + hash01(i, 0x7f4a7c15u);
+  uint comfortStep = uint(comfortPhase);
+  float comfortBlend = smoothstep(0.0, 1.0, fract(comfortPhase));
+  float comfort = 0.55 + 0.6 * mix(hash01(i ^ 0x5bd1e995u, comfortStep), hash01(i ^ 0x5bd1e995u, comfortStep + 1u), comfortBlend);
+  float minLookahead = 48.0 * max(1.0, sqrt(sizeScale));
+  float lookahead = comfort * clamp(max(baseSpeed, b.speed) * 0.3, minLookahead, max(minLookahead, 0.2 * min(min(boxR - boxL, boxB - boxT), boxD)));
+  wallTerm(true, pos.x - boxL - bodyOffset, vec3(1, 0, 0), lookahead, moveDir, wallPush, nearestWall, nearestNormal);
+  wallTerm(true, boxR - pos.x - bodyOffset, vec3(-1, 0, 0), lookahead, moveDir, wallPush, nearestWall, nearestNormal);
+  wallTerm(true, pos.y - boxT - bodyOffset, vec3(0, 1, 0), lookahead, moveDir, wallPush, nearestWall, nearestNormal);
+  wallTerm(true, boxB - pos.y - bodyOffset, vec3(0, -1, 0), lookahead, moveDir, wallPush, nearestWall, nearestNormal);
+  wallTerm(true, pos.z - bodyOffset, vec3(0, 0, 1), lookahead, moveDir, wallPush, nearestWall, nearestNormal);
+  wallTerm(true, boxD - pos.z - bodyOffset, vec3(0, 0, -1), lookahead, moveDir, wallPush, nearestWall, nearestNormal);
+
+  // Wall rebound: a fish heading into a wall, or hugging one, turns back toward open water for a moment.
+  float pushNow = length(wallPush);
+  if (pushNow > 0.0001 && timeSeconds >= b.independentUntil) {
+    vec3 awayN = wallPush / pushNow;
+    float into = -dot(moveDir, awayN);
+    if (into > 0.2 || hash01(i ^ 0xc2b2ae35u, frameSeed) < 1.2 * deltaSeconds) {
+      vec3 along = moveDir - awayN * dot(moveDir, awayN);
+      along = dot(along, along) > 0.0004 ? normalize(along) : anyPerp(awayN);
+      float outAngle = 0.35 + hash01(i ^ 0x27220a95u, frameSeed) * 0.7;
+      breakaway = normalize(along * cos(outAngle) + awayN * sin(outAngle));
+      b.independentUntil = timeSeconds + 0.6 + hash01(i ^ 0x165667b1u, frameSeed + 7u) * 0.8;
+    }
+  }
+
+  // Random wander, then the heading follows the velocity.
+  if (timeSeconds >= b.nextTurnChange) {
+    b.wanderYawT = randomValue(i + uint(timeSeconds * 13.0)) * 1.4 - 0.7;
+    b.wanderPitchT = (randomValue(i + uint(timeSeconds * 29.0) + 7u) * 1.4 - 0.7) * 0.5;
+    b.nextTurnChange = timeSeconds + 0.7 + randomValue(i + uint(timeSeconds * 17.0)) * 1.1;
+  }
+  b.wanderYaw += (b.wanderYawT - b.wanderYaw) * 1.8 * deltaSeconds;
+  b.wanderPitch += (b.wanderPitchT - b.wanderPitch) * 1.8 * deltaSeconds;
+  vec3 dir = length(v) > 0.001 ? normalize(v) : fwd;
+  dir = rotateYaw(dir, b.wanderYaw * deltaSeconds);
+  dir = normalize(dir + vec3(0.0, b.wanderPitch * deltaSeconds, 0.0));
+  if (timeSeconds < b.independentUntil) dir = turnToward(dir, breakaway, 1.5 * deltaSeconds);
+
+  float pushLength = length(wallPush);
+  float variability = speedVariability * 0.1;
+  float cruiseSpeed = baseSpeed;
+  if (variability > 0.0) {
+    float moodPeriod = 1.5 + hash01(i, 0x3c6ef372u) * 3.5;
+    uint moodIndex = uint((timeSeconds + hash01(i, 0x1b873593u) * moodPeriod) / moodPeriod);
+    float w = hash01(i ^ 0x27d4eb2fu, moodIndex);
+    float moodSign = hash01(i ^ 0x165667b1u, moodIndex) < 0.5 + 0.4 * seekWeight ? 1.0 : -1.0;
+    bool excursion = hash01(i ^ 0x85ebca6bu, moodIndex) < 0.3 + 0.5 * seekWeight;
+    float mood = moodSign * (0.1 + 0.9 * w * w * (1.0 - 0.7 * seekWeight));
+    float ownSpeed = excursion ? baseSpeed * pow(max(mood >= 0.0 ? 1000.0 / baseSpeed : baseSpeed, 1.0), mood * variability)
+                               : baseSpeed * (1.0 + (w * 2.0 - 1.0) * 0.12 * variability);
+    float share = min(neighbors * 0.25, 1.0) * 0.75;
+    cruiseSpeed = mix(ownSpeed, neighbors > 0.0 ? exp(neighborLogSpeed / neighbors) : ownSpeed, share) * sizeSpeedFactor(len);
+    cruiseSpeed *= 1.0 - 0.4 * variability * sat(pushLength);
+    cruiseSpeed = clamp(cruiseSpeed, 1.0, 1000.0);
+  }
+  float minimumSpeed = cruiseSpeed * 0.3;
+
+  float colourPushLength = length(colourPush);
+  if (colourPushLength > 2.0) colourPush *= 2.0 / colourPushLength;
+  vec3 steerPush = wallPush + colourPush * colourBias;
+  float steerLength = length(steerPush);
+  if (steerLength > 0.0001) {
+    vec3 awayNormal = steerPush / steerLength;
+    float urgency = sat(steerLength);
+    vec3 tangent = dir - awayNormal * min(dot(dir, awayNormal), 0.0);
+    if (dot(tangent, tangent) < 0.0004) tangent = anyPerp(awayNormal);
+    vec3 desired = normalize(normalize(tangent) + awayNormal * (0.15 + urgency));
+    dir = turnToward(dir, desired, (2.0 + urgency * 10.0) * deltaSeconds);
+    if (urgency > 0.25) breakaway = dir;
+    float closingSpeed = max(0.0, -dot(dir, nearestNormal)) * b.speed;
+    float brakingAcceleration = max(baseSpeed, b.speed) * 3.0;
+    float stoppingDistance = closingSpeed * closingSpeed / max(2.0 * brakingAcceleration, 0.001);
+    if (closingSpeed > 0.0 && nearestWall < stoppingDistance + 8.0) b.speed = max(minimumSpeed, b.speed - brakingAcceleration * deltaSeconds);
+  }
+
+  // Fish mostly swim level: ease the pitch back toward horizontal.
+  dir.y -= dir.y * min(1.0, 0.7 * deltaSeconds);
+  dir = normalize(dir);
+
+  b.cruise = cruiseSpeed;
+  float agility = sizeAccelerationFactor(len);
+  b.speed = b.speed > cruiseSpeed ? max(cruiseSpeed, b.speed - max(baseSpeed * 0.5, (b.speed - cruiseSpeed) * 1.5) * agility * deltaSeconds)
+                                  : min(cruiseSpeed, b.speed + max(baseSpeed, cruiseSpeed) * 1.5 * agility * deltaSeconds);
+  b.speed = max(b.speed, minimumSpeed);
+
+  pos += dir * b.speed * deltaSeconds;
+  float ext = max(1.0, len * 0.5);
+  bool clamped = false;
+  if (pos.x < boxL + ext) { pos.x = boxL + ext; dir.x = max(dir.x, 0.15); clamped = true; }
+  if (pos.x > boxR - ext) { pos.x = boxR - ext; dir.x = min(dir.x, -0.15); clamped = true; }
+  if (pos.y < boxT + ext) { pos.y = boxT + ext; dir.y = max(dir.y, 0.15); clamped = true; }
+  if (pos.y > boxB - ext) { pos.y = boxB - ext; dir.y = min(dir.y, -0.15); clamped = true; }
+  if (pos.z < ext) { pos.z = ext; dir.z = max(dir.z, 0.15); clamped = true; }
+  if (pos.z > boxD - ext) { pos.z = boxD - ext; dir.z = min(dir.z, -0.15); clamped = true; }
+  if (clamped) dir = normalize(dir);
+
+  // Tail model: yaw rate about the vertical axis bends the tail away from turns; thrust follows acceleration.
+  float dt = max(deltaSeconds, 0.0001);
+  float yawRate = dot(vec3(0.0, -1.0, 0.0), cross(startFwd, dir)) / dt;
+  b.yawRate += (yawRate - b.yawRate) * sat(deltaSeconds * 6.0);
+  float relativeAcceleration = (b.speed - startSpeed) / dt / max(b.speed, len);
+  float thrustTarget = relativeAcceleration >= 0.0 ? 1.0 + min(relativeAcceleration * 3.0, 0.6) : max(0.03, 1.0 + relativeAcceleration * 12.0);
+  b.thrust += (thrustTarget - b.thrust) * sat(deltaSeconds * (thrustTarget > b.thrust ? 6.0 : 3.0));
+  b.phase += swimOmega(b.speed, len, i) * clamp(0.25 + 0.75 * b.thrust, 0.25, 1.45) * deltaSeconds;
+  if (b.phase > 6.2831853) b.phase -= 6.2831853;
+
+  b.px = pos.x; b.py = pos.y; b.pz = pos.z;
+  b.fx = dir.x; b.fy = dir.y; b.fz = dir.z;
+  b.bx = breakaway.x; b.by = breakaway.y; b.bz = breakaway.z;
+  Boids[i] = b;
+}

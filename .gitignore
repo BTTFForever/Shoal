@@ -1,0 +1,15 @@
+# Build outputs
+/build/
+ShoalWallpaper/build/
+ShoalWindows/build/
+ShoalAndroid/build/
+ShoalLinux/shoal
+ShoalLinux3D/shoal3d
+# Generated from ShoalCore/shaders at build time
+ShoalLinux/shaders_gen.cpp
+ShoalLinux/shaders_gen.h
+ShoalLinux3D/shaders_gen.h
+# Local backups and caches
+/backups/
+__pycache__/
+*.pyc

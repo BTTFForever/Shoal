@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="Speed" type="Int">
+      <label>Swim speed in pixels per second</label>
+      <default>42</default>
+    </entry>
+    <entry name="SpeedVariability" type="Int">
+      <label>0 = constant speed, 10 = full 1-1000 px/s range</label>
+      <default>5</default>
+    </entry>
+    <entry name="FishCoverage" type="Int">
+      <label>Fish amount (share of the screen covered by fish, log scale)</label>
+      <default>50</default>
+    </entry>
+    <entry name="Randomness" type="Int">
+      <label>How often fish break away from the shoal</label>
+      <default>0</default>
+    </entry>
+    <entry name="Size" type="Double">
+      <label>Fish length as a percentage of screen height</label>
+      <default>2.4</default>
+    </entry>
+    <entry name="SizeVariation" type="Int">
+      <label>Size variability, 100-300</label>
+      <default>100</default>
+    </entry>
+    <entry name="SizeBell" type="Bool">
+      <label>Bell-curve size distribution</label>
+      <default>true</default>
+    </entry>
+    <entry name="TailPercent" type="Int">
+      <label>Tail size as a percentage of the body</label>
+      <default>33</default>
+    </entry>
+    <entry name="TailShade" type="Int">
+      <label>Head-to-tail lightness change, -100..100</label>
+      <default>-40</default>
+    </entry>
+    <entry name="DepthEffect" type="Bool">
+      <label>3D depth and shadows</label>
+      <default>true</default>
+    </entry>
+    <entry name="RockCount" type="Int">
+      <label>Rocks the fish avoid</label>
+      <default>0</default>
+    </entry>
+    <entry name="ColourSort" type="Bool">
+      <label>Fish only school with their own colour</label>
+      <default>false</default>
+    </entry>
+    <entry name="ColourAvoid" type="Bool">
+      <label>With ColourSort, fish steer away from other colours</label>
+      <default>false</default>
+    </entry>
+    <entry name="Colours" type="String">
+      <label>Fish palette, comma separated</label>
+      <default>#dce6f0,#ffcd28,#ff781e,#286ee6,#28c8be</default>
+    </entry>
+    <entry name="BackgroundColor" type="Color">
+      <label>Water colour</label>
+      <default>#000000</default>
+    </entry>
+    <entry name="AvoidIcons" type="Bool">
+      <label>Fish swim around desktop icons</label>
+      <default>true</default>
+    </entry>
+    <entry name="AvoidWidgets" type="Bool">
+      <label>Fish swim around desktop widgets</label>
+      <default>true</default>
+    </entry>
+    <entry name="AvoidMouse" type="Bool">
+      <label>Fish keep away from the mouse pointer</label>
+      <default>true</default>
+    </entry>
+    <entry name="PauseWhenCovered" type="Bool">
+      <label>Stop rendering while a window is maximised or full screen on this screen</label>
+      <default>true</default>
+    </entry>
+    <entry name="FrameRateDivisor" type="Int">
+      <label>1 = every refresh, 2 = half, 3 = third, 4 = quarter</label>
+      <default>1</default>
+    </entry>
+    <entry name="ShowFps" type="Bool">
+      <label>Draw the frame-rate counter</label>
+      <default>false</default>
+    </entry>
+    <entry name="BackgroundMode" type="Int">
+      <label>0 = plain water colour, 1 = picture</label>
+      <default>1</default>
+    </entry>
+    <entry name="BackgroundImage" type="String">
+      <label>Picture under the fish (file URL); empty = Plasma's default wallpaper</label>
+      <default></default>
+    </entry>
+    <entry name="BackgroundDim" type="Int">
+      <label>Darken the picture, percent</label>
+      <default>0</default>
+    </entry>
+    <entry name="AvoidMargin" type="Int">
+      <label>Extra keep-out distance around icons and widgets, pixels</label>
+      <default>12</default>
+    </entry>
+    <entry name="AvoidWindows" type="Bool">
+      <label>Fish swim around application windows</label>
+      <default>true</default>
+    </entry>
+    <entry name="Species" type="String">
+      <label>Fish species that swim, comma separated numbers: 1 Classic 2 Sardine 3 Goldfish 4 Koi 5 Tuna 6 Trout 7 Pike 8 Tetra 9 Fantail 10 Mackerel</label>
+      <default>1,2,3,4,5,6,7,8,9,10</default>
+    </entry>
+    <entry name="SpeciesMode" type="Int">
+      <label>0 = random mix of the species, 1 = one species per colour</label>
+      <default>0</default>
+    </entry>
+    <entry name="Gpu" type="String">
+      <label>PCI address of the GPU the fish are rendered on; empty = the dedicated GPU</label>
+      <default></default>
+    </entry>
+  </group>
+</kcfg>
